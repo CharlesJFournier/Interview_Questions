@@ -1,0 +1,24 @@
+
+void List<T>::reverse(ListNode*& startPoint, ListNode*& endPoint)
+{
+
+  if (startPoint == NULL||startPoint==endPoint)return;
+ 
+     ListNode* t=startPoint;
+     ListNode* st=startPoint;
+     ListNode* en=endPoint;
+     while(t!=endPoint)
+     {
+         ListNode* k=t->next;
+         t->next=t->prev;
+         t->prev=k;
+         t=k;
+     }
+     ListNode* k = t->prev;
+     t->next=t->prev;
+     t->prev=k;
+     endPoint=st;
+     startPoint=en;
+     startPoint->prev = NULL;
+     endPoint->next = NULL;
+ }
