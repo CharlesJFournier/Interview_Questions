@@ -1,125 +1,80 @@
 /**
  * @file anagram_finder.cpp
- * Implementation of the AnagramFinder class.
- *
- * @author Chase Geigle
- * @date Spring 2011
- * @date Summer 2012
+ * Uses the AnagramDict class in an executable capable of finding all
+ * anagrams of a word (or all words).
+ * @author Matt Jora
+ * @date Winter 2013
  */
 
-#include "anagram_finder.h"
+#include "anagram_dict.h"
+#include <iostream>
+#include <cstring>
+#include <fstream>
 
-using std::string;
-using std::vector;
-using std::ofstream;
-using std::endl;
+using namespace std;
 
-/**
- * Constructs an AnagramFinder based on a filename to read potential
- * anagrams from.
- *
- * @param ifilename The name of the file to read in.
- */
-template <template <class K, class V> class Dict>
-AnagramFinder<Dict>::AnagramFinder(const string& ifilename)
-    : file(true), filename(ifilename)
+const string USAGE =
+"USAGE: anagram_finder -w [WORD_LIST] -o [FILE]\n"
+"Finds anagrams using a given word list file (where each word is newline-separated).\n"
+"\n"
+"  -a       Finds all anagrams in the word list.";
+
+int main(int argc, char* argv[])
 {
-    /* nothing */
-}
-
-/**
- * Constructs an AnagramFinder based on a set of strings instead of a
- * filename.
- *
- * @param istrings The set of strings to use for this finder.
- */
-template <template <class K, class V> class Dict>
-AnagramFinder<Dict>::AnagramFinder(const vector<string>& istrings)
-    : file(false), strings(istrings)
-{
-    /* nothing */
-}
-
-/**
- * Determines if the given word is an anagram of the test word.
- *
- * @param word Word that is possibly an anagram.
- * @param test Word to check against.
- * @return A boolean value indicating whether word is an anagram of test.
- */
-template <template <class K, class V> class Dict>
-bool AnagramFinder<Dict>::checkWord(const string& word, const string& test)
-{
-    /**
-     * @todo Implement this function! You should use the provided
-     * templated hashtable class Dict.
-     */
-	Dict<char, int> letterCountWord(26);
-	Dict<char, int> letterCountTest(26);
-	for(size_t i = 0; i <word.length(); i++){
-		letterCountWord[i]++;
-	}
-	
-	for(size_t i = 0; i <test.length(); i++){
-		letterCountTest[i]++;
-	}
-	for(auto pair : letterCountWord){
-		if(letterCountWord[pair.first] != letterCountTest[pair.first])
-			return false;
-	}
-	
-	for(auto pair : letterCountTest){
-		if(letterCountWord[pair.first] != letterCountTest[pair.first])
-			return false;
-	}
-	return true;
-}
-
-/**
- * Retrieves a set of words that are anagrams of a given word.
- *
- * @param word The word we wish to find anagrams of inside the finder.
- */
-template <template <class K, class V> class Dict>
-vector<string> AnagramFinder<Dict>::getAnagrams(const string& word)
-{
-    // set up the return vector
-    vector<string> ret;
-
-    if (file) {
-        TextFile infile(filename);
-        string line;
-        vector<string> tests;
-        while (infile.good()) {
-            string test = infile.getNextWord();
-            if (checkWord(word, test))
-                ret.push_back(test);
+    string word_list_filename = "data/words.txt";
+    vector<string> args;
+    bool find_all = false;
+    string out_filename = "";
+    /* Parse arguments. */
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-w") == 0) {
+            i++;
+            if (i != argc) {
+                word_list_filename = argv[i];
+            }
+        } else if (strcmp(argv[i], "-o") == 0) {
+            i++;
+            if (i != argc) {
+                out_filename = argv[i];
+            }
+        } else if (strcmp(argv[i], "-a") == 0) {
+            find_all = true;
+        } else {
+            args.push_back(argv[i]);
         }
+    }
+    ifstream word_list_file(word_list_filename);
+    /* Only proceed of we have a good wordlist, AND either args aren't empty
+     * (there's a word to find anagrams of) or we are finding all anagrans. */
+    if (word_list_file.good() && (!args.empty() || find_all)) {
+        AnagramDict dict(word_list_filename);
+        ofstream out(out_filename);
+        /* Redirect cout to be a file. */
+        if (out.good()) {
+            cout.rdbuf(out.rdbuf());
+        }
+        if (!find_all) {
+            for (string& arg : args) {
+                cout << "Anagrams for " << arg << ":" << endl;
+                vector<string> anagrams = dict.get_anagrams(arg);
+                for (string& anagram : anagrams) {
+                    cout << anagram << endl;
+                }
+            }
+        } else {
+            vector<vector<string>> anagram_groups = dict.get_all_anagrams();
+            for (vector<string>& anagram_group : anagram_groups) {
+                for (string& anagram : anagram_group) {
+                    cout << anagram << endl;
+                }
+                cout << endl;
+            }
+        }
+    } else if (args.empty()) {
+        cerr << USAGE << endl;
+        return -1;
     } else {
-        for (size_t i = 0; i < strings.size(); i++) {
-            if (checkWord(word, strings[i]))
-                ret.push_back(strings[i]);
-        }
+        cerr << "File " << word_list_filename << " does not exist." << endl;
+        return -1;
     }
-    return ret;
-}
-
-/**
- * Retrieves a set of anagrams in the finder of a given words, but writes
- * them out to a file instead of returning a vector.
- *
- * @param word The word we wish to find anagrams of inside the finder.
- * @param output_file The name of the file we want to write to.
- */
-template <template <class K, class V> class Dict>
-void AnagramFinder<Dict>::writeAnagrams(const string& word,
-                                        const string& output_file)
-{
-    vector<string> anagrams = getAnagrams(word);
-    ofstream outfile(output_file.c_str());
-    if (outfile.is_open()) {
-        for (size_t i = 0; i < anagrams.size(); i++)
-            outfile << anagrams[i] << endl;
-    }
-    outfile.close();
 }
